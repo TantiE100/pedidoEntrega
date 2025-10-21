@@ -1,12 +1,12 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from functools import wraps
+
 import json
 import folium
 
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta_muy_segura'  # Cambia esto en prod.
 
-# Simulación de una base de datos de usuarios
 users = {
     'admin': {'password': 'adminpass', 'role': 'admin'},
     'driver': {'password': 'driverpass', 'role': 'driver'},
@@ -22,11 +22,9 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
 @app.route('/')
 def home():
     return render_template('home.html')
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -42,7 +40,6 @@ def login():
             flash('Usuario o contraseña incorrectos', 'error')
     return render_template('login.html')
 
-
 @app.route('/logout')
 def logout():
     session.pop('username', None)
@@ -50,27 +47,21 @@ def logout():
     flash('Has cerrado sesión', 'info')
     return redirect(url_for('home'))
 
-
 @app.route('/dashboard')
 @login_required
 def dashboard():
     return render_template('dashboard.html')
 
-
 @app.route('/ver_mapa')
+@login_required
 def ver_mapa():
-    if 'username' not in session or session['username'] is None:
-        return redirect(url_for('login'))
+    m = folium.Map(location=[-17.3935, -66.1578], zoom_start=15)
 
-    # Crear el mapa centrado en Cochabamba
-    m = folium.Map(location=[-17.3935, -66.1570], zoom_start=15)
-
-    # Lista de tiendas
     tiendas = [
         {
             'nombre': 'Doña Filomena',
             'contacto': 'Filomena Delgado',
-            'direccion': 'Calle La Tablada #453',
+            'direccion': 'Calle La Tablada #4533',
             'telefono': '77788899',
             'foto': 'tienda_barrio.jpg',
             'ubicacion': [-17.3935, -66.1570]
@@ -125,21 +116,17 @@ def ver_mapa():
         }
     ]
 
-    # Agregar marcadores
     for tienda in tiendas:
+        foto_url = url_for('static', filename=f'fotos/{tienda["foto"]}')
         popup_content = f"""
-        <table border=1 class="table table-success table-striped">
-            <tr><td colspan="2"><img src="{ url_for('static', filename='fotos/' + tienda['foto']) }" width="250" height="200"></td></tr>
+        <table border="1" class="table table-success table-striped">
+            <tr><td colspan="2"><img src="{foto_url}" width="250" height="200"/></td></tr>
             <tr><td>Tienda:</td><td>{tienda['nombre']}</td></tr>
             <tr><td>Contacto:</td><td>{tienda['contacto']}</td></tr>
             <tr><td>Dirección:</td><td>{tienda['direccion']}</td></tr>
             <tr><td>Teléfono:</td><td>{tienda['telefono']}</td></tr>
-            <tr><td colspan="2" style="text-align:center;">
-                <a class="btn btn-primary" href="/pedido" style="color:white;">Ver Pedido</a>
-            </td></tr>
         </table>
         """
-
         folium.Marker(
             location=tienda['ubicacion'],
             popup=folium.Popup(popup_content, max_width=300),
@@ -147,15 +134,13 @@ def ver_mapa():
             icon=folium.Icon(color='blue', icon='shopping-cart', prefix='fa')
         ).add_to(m)
 
-    # Guardar mapa en archivo
-    path = '/home/iamateria/mysite/static/mapa_cbb.html'
-    m.save(path)
     mapa_html = m._repr_html_()
     return render_template('mapa.html', mapa=mapa_html)
 
-
 @app.route('/pedido')
+@login_required
 def pedido():
-    if 'username' not in session or session['username'] is None:
-        return redirect(url_for('login'))
     return render_template('pedido.html')
+
+if __name__ == '__main__':
+    app.run(debug=True)
